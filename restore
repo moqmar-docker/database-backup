@@ -1,0 +1,46 @@
+#!/bin/sh
+
+help() {
+  echo "Usage: restore [database-command-arguments]"
+  echo "MySQL databases: (mysql will be used)"
+  echo " HOST                 The hostname of the database server. [required]"
+  echo " PORT                 The port of the database server."
+  echo " MYSQL_ROOT_PASSWORD  The root password for the database server. [required]"
+  echo "PostgreSQL databases: (psql will be used)"
+  echo " HOST                 The hostname of the database server. [required]"
+  echo " PORT                 The port of the database server."
+  echo " POSTGRES_PASSWORD    The password for the superuser. [required]"
+  echo " POSTGRES_USER        The username of the superuser, defaults to 'postgres'."
+  #echo "MongoDB databases: (mongorestore will be used)"
+  #echo " MONGODB_URI  The MongoDB connection string"
+}
+
+if [ -z "$HOST" ]; then
+  help
+  exit 1
+fi
+
+if [ -n "$MYSQL_ROOT_PASSWORD" ]; then
+
+  [ -z "$PORT" ] && PORT=3306
+  mysql --user=root --password=$MYSQL_ROOT_PASSWORD --host=$HOST --port=$PORT --default-character-set=utf8 "$@"
+
+elif [ -n "$POSTGRES_PASSWORD" ]; then
+
+  [ -z "$POSTGRES_USER" ] && POSTGRES_USER="postgres"
+  export PGUSER="$POSTGRES_USER"
+  export PGPASSWORD="$POSTGRES_PASSWORD"
+  [ -n "$PORT" ] && export PGPORT="$PORT"
+
+  psql --host=$HOST --quiet --file - "$@"
+
+#elif [ -n "$MONGODB_URI" ]; then
+#
+#  ...
+
+else
+
+  help
+  exit 1
+
+fi

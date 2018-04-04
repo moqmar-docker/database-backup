@@ -1,0 +1,71 @@
+#!/bin/sh
+
+help() {
+  echo "Usage: backup [dump-command-arguments]"
+  echo "MySQL databases: (mysqldump will be used)"
+  echo " HOST                 The hostname of the database server. [required]"
+  echo " PORT                 The port of the database server."
+  echo " MYSQL_ROOT_PASSWORD  The root password for the database server. [required]"
+  echo "PostgreSQL databases: (pg_dumpall will be used)"
+  echo " HOST                 The hostname of the database server. [required]"
+  echo " PORT                 The port of the database server."
+  echo " POSTGRES_PASSWORD    The password for the superuser. [required]"
+  echo " POSTGRES_USER        The username of the superuser, defaults to 'postgres'."
+  #echo "MongoDB databases: (mongodump will be used)"
+  #echo " MONGODB_URI  The MongoDB connection string"
+}
+
+if [ -z "$HOST" ]; then
+  help
+  exit 1
+fi
+
+if [ -n "$MYSQL_ROOT_PASSWORD" ]; then
+
+  [ -z "$PORT" ] && PORT=3306
+
+  # Dump mysql.user
+  echo
+  echo "-----------------"
+  echo "-- USER BACKUP --"
+  echo "-----------------"
+  echo
+  echo "USE mysql;"
+  echo
+  mysqldump --user=root --password=$MYSQL_ROOT_PASSWORD --host=$HOST --port=$PORT --skip-dump-date --lock-all-tables mysql user "$@"
+
+  # Dump databases except mysql and information_schema
+  databases=`mysql --user=root --password=$MYSQL_ROOT_PASSWORD --host=$HOST --port=$PORT -N -e "show databases;" |
+  grep -v -F mysql | grep -v -F information_schema | grep -v -F performance_schema`
+  
+  echo
+  echo "-----------------"
+  echo "-- DATA BACKUP --"
+  echo "-----------------"
+  echo
+  if [ -n "$databases" ]; then
+    mysqldump --user=root --password=$MYSQL_ROOT_PASSWORD --host=$HOST --port=$PORT --skip-dump-date --routines "$@" --databases $databases
+  else
+    echo "-- No databases to back up."
+  fi
+
+elif [ -n "$POSTGRES_PASSWORD" ]; then
+
+  [ -z "$POSTGRES_USER" ] && POSTGRES_USER="postgres"
+  export PGUSER="$POSTGRES_USER"
+  export PGPASSWORD="$POSTGRES_PASSWORD"
+  [ -n "$PORT" ] && export PGPORT="$PORT"
+
+  # dumpall is not recommended, but to get a consistent snapshot it's pretty much alright.
+  pg_dumpall --host $HOST --clean --if-exists "$@"
+
+#elif [ -n "$MONGODB_URI" ]; then
+#
+#  ...
+
+else
+
+  help
+  exit 1
+
+fi
