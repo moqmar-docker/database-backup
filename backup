@@ -44,7 +44,7 @@ if [ -n "$MYSQL_ROOT_PASSWORD" ]; then
   echo "-----------------"
   echo
   if [ -n "$databases" ]; then
-    mysqldump --user=root --password=$MYSQL_ROOT_PASSWORD --host=$HOST --port=$PORT --skip-dump-date --routines "$@" --databases $databases
+    mysqldump --user=root --password=$MYSQL_ROOT_PASSWORD --host=$HOST --port=$PORT --skip-dump-date --skip-extended-insert --routines "$@" --databases $databases
   else
     echo "-- No databases to back up."
   fi
